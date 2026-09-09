@@ -29,12 +29,12 @@ const CLAVE = KEY_PREFIX + "K".repeat(32);
 
 const CRED = { token: "tok", projectId: "p1", language: "ES" };
 
-test("construye la URL con token, idioma y proyecto escapado", async () => {
+test("construye la URL con la credencial, el idioma y el proyecto escapado", async () => {
   const { fetchImpl, calls } = stub({ body: [] });
   await fetchKeywords({ ...CRED, projectId: "a/b" }, { fetchImpl });
   const url = new URL(calls[0]);
   assert.equal(url.pathname, "/v1/projects/a%2Fb/keywords");
-  assert.equal(url.searchParams.get("token"), "tok");
+  assert.equal(url.searchParams.get("api_key"), "tok");
   assert.equal(url.searchParams.get("language"), "ES");
   assert.equal(url.searchParams.get("afterUpdatedAtStr"), null);
 });
@@ -131,16 +131,19 @@ test("una clave de API va en la cabecera y nunca en la URL", async () => {
   await fetchKeywords({ ...CRED, token: CLAVE }, { fetchImpl });
 
   assert.equal(headers[0]["x-api-key"], CLAVE);
-  assert.equal(new URL(calls[0]).searchParams.get("token"), null);
+  assert.equal(new URL(calls[0]).searchParams.get("api_key"), null);
   // Un secreto en la query acaba en los logs del servidor y del proxy.
   assert.ok(!calls[0].includes(CLAVE), "la clave no puede aparecer en la URL");
 });
 
-test("una credencial del esquema antiguo sigue yendo por la query", async () => {
+test("una credencial del esquema antiguo va en ?api_key=, que es lo que acepta la API", async () => {
   const { fetchImpl, calls, headers } = stub({ body: [] });
   await fetchKeywords({ ...CRED, token: "uid-antiguo" }, { fetchImpl });
 
-  assert.equal(new URL(calls[0]).searchParams.get("token"), "uid-antiguo");
+  const url = new URL(calls[0]);
+  assert.equal(url.searchParams.get("api_key"), "uid-antiguo");
+  // `token` era el parámetro de una versión anterior de la API; hoy se rechaza.
+  assert.equal(url.searchParams.get("token"), null);
   assert.equal(headers[0]["x-api-key"], undefined);
 });
 

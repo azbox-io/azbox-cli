@@ -2,7 +2,7 @@
  * Cliente HTTP de la API de AZbox.
  *
  * Un solo endpoint, verificado contra el controlador real:
- *   GET /v1/projects/{projectId}/keywords?token=&language=&afterUpdatedAtStr=
+ *   GET /v1/projects/{projectId}/keywords?api_key=&language=&afterUpdatedAtStr=
  *
  * La forma de la respuesta importa y no es la obvia:
  *   [{ id: "<id interno>", data: { keyword: "home.title", translation: "…" } }]
@@ -19,10 +19,11 @@ export const KEY_PREFIX = "azb_live_";
 /**
  * ¿Esto es una clave nueva o una credencial del esquema antiguo?
  *
- * Las nuevas viajan en la cabecera `x-api-key`; las antiguas, en la query,
- * porque es donde la API las espera. Un secreto en la URL termina en los logs
- * del servidor, en los del proxy y en el historial de la terminal, así que las
- * nuevas no pasan por ahí.
+ * Las nuevas viajan en la cabecera `x-api-key`; las antiguas, en `?api_key=`,
+ * porque es donde la API las espera — es el parámetro que usa la librería de
+ * Flutter publicada. Un secreto en la URL termina en los logs del servidor, en
+ * los del proxy y en el historial de la terminal, así que las nuevas no pasan
+ * por ahí.
  */
 export function isApiKey(credential) {
   return (
@@ -62,7 +63,7 @@ export async function fetchKeywords(
   );
   const headers = { accept: "application/json" };
   if (isApiKey(token)) headers["x-api-key"] = token;
-  else url.searchParams.set("token", token);
+  else url.searchParams.set("api_key", token);
 
   url.searchParams.set("language", language);
   if (afterUpdatedAt) {
