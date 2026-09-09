@@ -155,12 +155,14 @@ test("azbox.json aporta proyecto e idiomas", async () => {
   assert.equal(salida.filter((l) => /claves/.test(l)).length, 2);
 });
 
-test("un token en azbox.json se rechaza: ese fichero se commitea", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "azbox-cli-tok-"));
-  writeFileSync(join(dir, "azbox.json"), JSON.stringify({ token: "secreto" }));
-  const { io, errores } = harness({ cwd: dir });
-  assert.equal(await run(["pull", "-l", "ES"], io), 2);
-  assert.match(errores.join("\n"), /Qu[íi]talo|AZBOX_TOKEN/);
+test("una credencial en azbox.json se rechaza: ese fichero se commitea", async () => {
+  for (const campo of ["token", "apiKey", "api_key"]) {
+    const dir = mkdtempSync(join(tmpdir(), "azbox-cli-tok-"));
+    writeFileSync(join(dir, "azbox.json"), JSON.stringify({ [campo]: "secreto" }));
+    const { io, errores } = harness({ cwd: dir });
+    assert.equal(await run(["pull", "-l", "ES"], io), 2, campo);
+    assert.match(errores.join("\n"), /Qu[íi]talo|AZBOX_TOKEN/, campo);
+  }
 });
 
 test("un azbox.json corrupto no revienta con un stack", async () => {

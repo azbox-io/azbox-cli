@@ -13,6 +13,25 @@
 
 export const DEFAULT_BASE_URL = "https://api.azbox.io";
 
+/** Prefijo de las claves de API de AZbox. */
+export const KEY_PREFIX = "azb_live_";
+
+/**
+ * ¿Esto es una clave nueva o una credencial del esquema antiguo?
+ *
+ * Las nuevas viajan en la cabecera `x-api-key`; las antiguas, en la query,
+ * porque es donde la API las espera. Un secreto en la URL termina en los logs
+ * del servidor, en los del proxy y en el historial de la terminal, así que las
+ * nuevas no pasan por ahí.
+ */
+export function isApiKey(credential) {
+  return (
+    typeof credential === "string" &&
+    credential.startsWith(KEY_PREFIX) &&
+    credential.length >= KEY_PREFIX.length + 20
+  );
+}
+
 export class AzboxApiError extends Error {
   constructor(message, { status, detail } = {}) {
     super(message);
@@ -41,7 +60,10 @@ export async function fetchKeywords(
     `/v1/projects/${encodeURIComponent(projectId)}/keywords`,
     baseUrl,
   );
-  url.searchParams.set("token", token);
+  const headers = { accept: "application/json" };
+  if (isApiKey(token)) headers["x-api-key"] = token;
+  else url.searchParams.set("token", token);
+
   url.searchParams.set("language", language);
   if (afterUpdatedAt) {
     url.searchParams.set(
@@ -54,7 +76,7 @@ export async function fetchKeywords(
 
   let response;
   try {
-    response = await fetchImpl(url, { headers: { accept: "application/json" } });
+    response = await fetchImpl(url, { headers });
   } catch (cause) {
     throw new AzboxApiError(`No se pudo conectar con ${baseUrl}: ${cause.message}`);
   }
@@ -70,6 +92,20 @@ export async function fetchKeywords(
       );
     }
     return [];
+  }
+
+  if (response.status === 401) {
+    throw new AzboxApiError(
+      `La API rechazó la credencial. Usa una clave del panel de AZbox (empieza por ${KEY_PREFIX}).`,
+      { status: 401, detail: await readDetail(response) },
+    );
+  }
+
+  if (response.status === 403) {
+    throw new AzboxApiError(
+      `La clave no tiene permiso sobre el proyecto ${projectId}, o está atada a otro.`,
+      { status: 403, detail: await readDetail(response) },
+    );
   }
 
   if (!response.ok) {

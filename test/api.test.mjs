@@ -1,21 +1,31 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { fetchKeywords, toEntries, AzboxApiError } from "../src/api.mjs";
+import {
+  fetchKeywords,
+  toEntries,
+  isApiKey,
+  AzboxApiError,
+  KEY_PREFIX,
+} from "../src/api.mjs";
 
-/** fetch de mentira que devuelve lo que se le diga y guarda la URL pedida. */
+/** fetch de mentira que devuelve lo que se le diga y guarda lo que se le pide. */
 function stub({ status = 200, body = [] } = {}) {
   const calls = [];
-  const fetchImpl = async (url) => {
+  const headers = [];
+  const fetchImpl = async (url, options = {}) => {
     calls.push(String(url));
+    headers.push(options.headers ?? {});
     return {
       ok: status >= 200 && status < 300,
       status,
       json: async () => body,
     };
   };
-  return { fetchImpl, calls };
+  return { fetchImpl, calls, headers };
 }
+
+const CLAVE = KEY_PREFIX + "K".repeat(32);
 
 const CRED = { token: "tok", projectId: "p1", language: "ES" };
 
@@ -110,4 +120,50 @@ test("el orden es estable alfabéticamente, para que el diff no baile", () => {
     { id: "3", data: { keyword: "m", translation: "M" } },
   ]);
   assert.deepEqual(entries.map(([k]) => k), ["a", "m", "z"]);
+});
+
+// ---------------------------------------------------------------------------
+// Cómo viaja la credencial
+// ---------------------------------------------------------------------------
+
+test("una clave de API va en la cabecera y nunca en la URL", async () => {
+  const { fetchImpl, calls, headers } = stub({ body: [] });
+  await fetchKeywords({ ...CRED, token: CLAVE }, { fetchImpl });
+
+  assert.equal(headers[0]["x-api-key"], CLAVE);
+  assert.equal(new URL(calls[0]).searchParams.get("token"), null);
+  // Un secreto en la query acaba en los logs del servidor y del proxy.
+  assert.ok(!calls[0].includes(CLAVE), "la clave no puede aparecer en la URL");
+});
+
+test("una credencial del esquema antiguo sigue yendo por la query", async () => {
+  const { fetchImpl, calls, headers } = stub({ body: [] });
+  await fetchKeywords({ ...CRED, token: "uid-antiguo" }, { fetchImpl });
+
+  assert.equal(new URL(calls[0]).searchParams.get("token"), "uid-antiguo");
+  assert.equal(headers[0]["x-api-key"], undefined);
+});
+
+test("isApiKey no se deja engañar por un prefijo suelto", () => {
+  assert.equal(isApiKey(CLAVE), true);
+  assert.equal(isApiKey(KEY_PREFIX), false);
+  assert.equal(isApiKey(KEY_PREFIX + "corto"), false);
+  assert.equal(isApiKey("uid-antiguo"), false);
+  assert.equal(isApiKey(undefined), false);
+});
+
+test("un 401 explica qué credencial hace falta", async () => {
+  const { fetchImpl } = stub({ status: 401, body: { error: "Invalid credentials" } });
+  await assert.rejects(
+    () => fetchKeywords({ ...CRED, token: "uid-antiguo" }, { fetchImpl }),
+    (err) => err instanceof AzboxApiError && err.status === 401 && err.message.includes(KEY_PREFIX),
+  );
+});
+
+test("un 403 dice que la clave puede estar atada a otro proyecto", async () => {
+  const { fetchImpl } = stub({ status: 403, body: { error: "nope" } });
+  await assert.rejects(
+    () => fetchKeywords({ ...CRED, token: CLAVE }, { fetchImpl }),
+    (err) => err instanceof AzboxApiError && err.status === 403 && err.message.includes("p1"),
+  );
 });

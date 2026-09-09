@@ -35,9 +35,15 @@ export AZBOX_PROJECT_ID=your-project-id
 export AZBOX_TOKEN=your-api-key
 ```
 
-The token is **never** read from `azbox.json`. That file gets committed, and an
+The key is **never** read from `azbox.json`. That file gets committed, and an
 API key in a repository is a leak; the CLI refuses to start if it finds one
 there.
+
+A key issued by the dashboard starts with `azb_live_` and is sent in the
+`x-api-key` header, so it never ends up in a server log or a proxy log. Older
+credentials — the account identifier that earlier versions of the AZbox
+libraries used — still work and are sent the way that API expects, but they
+cannot be revoked and they are not scoped to one project. Replace them.
 
 ## Configuration
 
@@ -134,7 +140,8 @@ called it wrong.
 One endpoint:
 
 ```
-GET https://api.azbox.io/v1/projects/{projectId}/keywords?token=&language=&afterUpdatedAtStr=
+GET https://api.azbox.io/v1/projects/{projectId}/keywords?language=&afterUpdatedAtStr=
+x-api-key: azb_live_…
 ```
 
 Documented at [azbox.io/docs/api/rest/](https://azbox.io/docs/api/rest/). The

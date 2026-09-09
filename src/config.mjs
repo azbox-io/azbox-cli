@@ -18,11 +18,13 @@ export function loadFile(cwd = process.cwd()) {
   } catch (cause) {
     throw new Error(`${CONFIG_FILE} no es JSON válido: ${cause.message}`);
   }
-  if (parsed && typeof parsed === "object" && "token" in parsed) {
-    throw new Error(
-      `${CONFIG_FILE} contiene un "token". Quítalo: ese fichero se commitea. ` +
-        `Usa la variable de entorno AZBOX_TOKEN.`,
-    );
+  for (const campo of ["token", "apiKey", "api_key"]) {
+    if (parsed && typeof parsed === "object" && campo in parsed) {
+      throw new Error(
+        `${CONFIG_FILE} contiene un "${campo}". Quítalo: ese fichero se commitea. ` +
+          `Usa la variable de entorno AZBOX_TOKEN.`,
+      );
+    }
   }
   return parsed ?? {};
 }
