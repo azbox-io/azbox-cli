@@ -1,6 +1,6 @@
 {
   "name": "azbox-cli",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Command-line tool to pull AZbox translations into your project",
   "keywords": ["azbox", "i18n", "l10n", "localization", "translations", "cli", "arb", "i18next"],
   "license": "MIT",

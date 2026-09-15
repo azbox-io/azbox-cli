@@ -215,3 +215,17 @@ test("pull -l es: pide ES a la API y escribe el fichero con el nombre que se pid
   const escrito = JSON.parse(readFileSync(join(dir, "out", "es.json"), "utf8"));
   assert.deepEqual(escrito, { home: { title: "Hola" } });
 });
+
+test("instalado como lo instala npm (enlace simbólico en .bin) sí se ejecuta", async () => {
+  // Con 0.1.0 y 0.1.1 el comando instalado no hacía nada y salía con 0.
+  const { spawnSync } = await import("node:child_process");
+  const { symlinkSync } = await import("node:fs");
+  const { fileURLToPath } = await import("node:url");
+  const bin = join(mkdtempSync(join(tmpdir(), "azbox-bin-")), "azbox");
+  symlinkSync(fileURLToPath(new URL("../src/cli.mjs", import.meta.url)), bin);
+  const version = spawnSync(process.execPath, [bin, "--version"], { encoding: "utf8" });
+  assert.equal(version.status, 0);
+  assert.match(version.stdout, /\d+\.\d+\.\d+/);
+  const sinCredenciales = spawnSync(process.execPath, [bin, "status", "-l", "ES"], { encoding: "utf8", env: { PATH: process.env.PATH } });
+  assert.equal(sinCredenciales.status, 2, "sin credenciales debe salir con 2, no con 0 en silencio");
+});

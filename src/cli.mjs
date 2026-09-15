@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 import { parseArgs } from "node:util";
-import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync, existsSync, realpathSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 import { dirname } from "node:path";
 
 import { fetchKeywords, toEntries, AzboxApiError } from "./api.mjs";
 import { serialize, FORMATS, EXTENSIONS, canNest } from "./formats.mjs";
 import { loadFile, resolveConfig, outputPath, CONFIG_FILE } from "./config.mjs";
 
-const VERSION = "0.1.1";
+const VERSION = "0.1.2";
 
 const USAGE = `azbox ${VERSION} — traer las traducciones de AZbox a tu proyecto
 
@@ -187,7 +188,23 @@ export async function run(argv, io = {}) {
   return huboError ? 1 : 0;
 }
 
-// Solo se ejecuta como binario, no al importarlo desde los tests.
-if (import.meta.url === `file://${process.argv[1]}`) {
+/**
+ * ¿Se está ejecutando este fichero como programa, y no importado desde los tests?
+ *
+ * npm instala el comando como un enlace simbólico (node_modules/.bin/azbox), así
+ * que process.argv[1] es la ruta del enlace y no la del fichero. Comparándolas
+ * tal cual, el CLI instalado no hacía nada y salía con 0. Hay que resolver el
+ * enlace antes de comparar.
+ */
+function isMain() {
+  if (!process.argv[1]) return false;
+  try {
+    return import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href;
+  } catch {
+    return false;
+  }
+}
+
+if (isMain()) {
   run(process.argv.slice(2)).then((code) => process.exit(code));
 }
