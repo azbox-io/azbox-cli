@@ -65,7 +65,11 @@ export async function fetchKeywords(
   if (isApiKey(token)) headers["x-api-key"] = token;
   else url.searchParams.set("api_key", token);
 
-  url.searchParams.set("language", language);
+  // Los códigos de idioma de un proyecto están en mayúsculas (EN-US, ES, PT-PT)
+  // y la API los compara tal cual: con "es" devuelve todas las claves sin
+  // ninguna traducción, y el CLI no escribiría nada. El plugin de Flutter ya
+  // los pasa a mayúsculas; aquí igual.
+  url.searchParams.set("language", String(language).toUpperCase());
   if (afterUpdatedAt) {
     url.searchParams.set(
       "afterUpdatedAtStr",

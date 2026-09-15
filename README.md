@@ -61,6 +61,9 @@ Everything can go on the command line, but a project usually wants a file.
 
 Precedence is flags, then environment, then file.
 
+Language codes are the ones configured in the project (`EN-US`, `ES`, `PT-PT`…).
+Case does not matter: `-l es` asks the API for `ES` and still writes `es.json`.
+
 ## Commands
 
 ### `azbox pull`

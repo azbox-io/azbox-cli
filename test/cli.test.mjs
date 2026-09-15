@@ -202,3 +202,16 @@ test("crea los directorios que falten", async () => {
   assert.equal(await run(["pull", "-l", "ES", "-o", out], io), 0);
   assert.ok(existsSync(join(dir, "muy/dentro/de/aqui/ES.json")));
 });
+
+test("pull -l es: pide ES a la API y escribe el fichero con el nombre que se pidió", async () => {
+  const { io, dir } = harness({ env: { AZBOX_TOKEN: "tok", AZBOX_PROJECT_ID: "p1" } });
+  // Una API como la real: con "es" en minúsculas no hay traducciones.
+  io.fetchImpl = async (url) => {
+    const lang = new URL(url).searchParams.get("language");
+    const body = lang === "ES" ? [KW("home.title", "Hola")] : [KW("home.title")];
+    return { ok: true, status: 200, json: async () => body };
+  };
+  assert.equal(await run(["pull", "-l", "es", "-o", join(dir, "out", "{language}.{ext}")], io), 0);
+  const escrito = JSON.parse(readFileSync(join(dir, "out", "es.json"), "utf8"));
+  assert.deepEqual(escrito, { home: { title: "Hola" } });
+});

@@ -170,3 +170,9 @@ test("un 403 dice que la clave puede estar atada a otro proyecto", async () => {
     (err) => err instanceof AzboxApiError && err.status === 403 && err.message.includes("p1"),
   );
 });
+
+test("el idioma se pide en mayúsculas, como están en el proyecto", async () => {
+  const { fetchImpl, calls } = stub({ body: [] });
+  await fetchKeywords({ ...CRED, language: "pt-pt" }, { fetchImpl });
+  assert.equal(new URL(calls[0]).searchParams.get("language"), "PT-PT");
+});

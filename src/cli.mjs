@@ -7,7 +7,7 @@ import { fetchKeywords, toEntries, AzboxApiError } from "./api.mjs";
 import { serialize, FORMATS, EXTENSIONS, canNest } from "./formats.mjs";
 import { loadFile, resolveConfig, outputPath, CONFIG_FILE } from "./config.mjs";
 
-const VERSION = "0.1.0";
+const VERSION = "0.1.1";
 
 const USAGE = `azbox ${VERSION} — traer las traducciones de AZbox a tu proyecto
 
